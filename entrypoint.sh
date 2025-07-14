@@ -3,16 +3,17 @@
 CERT_PATH="/certs/local-dev.crt"
 KEY_PATH="/certs/local-dev.key"
 DAYS_VALID=365
+CADDYFILE="/etc/caddy/Caddyfile"
 
-# Parse domain list from DOMAINS
+# Obtener dominios del entorno
 DOMAINS_ARRAY=$(echo "$DOMAINS" | tr ',' ' ')
 
-# Extract first domain for CN
+# Obtener el primer dominio para CN
 FIRST_DOMAIN=$(echo "$DOMAINS" | cut -d',' -f1 | cut -d':' -f1)
 
-# Generate self-signed certificates if they do not exist
+# Generar certificado autofirmado si no existe
 if [ ! -f "$CERT_PATH" ] || [ ! -f "$KEY_PATH" ]; then
-  echo "Generating self-signed certificate for development..."
+  echo "Generando certificado autofirmado para desarrollo..."
 
   OPENSSL_CONF=$(mktemp)
   cat > "$OPENSSL_CONF" <<EOF
@@ -40,6 +41,7 @@ EOF
   done
 
   echo "IP.1 = 127.0.0.1" >> "$OPENSSL_CONF"
+  echo "IP.2 = ::1" >> "$OPENSSL_CONF"
 
   openssl req -x509 -nodes -days "$DAYS_VALID" \
     -newkey rsa:2048 \
@@ -50,27 +52,29 @@ EOF
 
   rm "$OPENSSL_CONF"
 else
-  echo "Certificate already exists."
+  echo "Certificados ya existen. Usando los existentes."
 fi
 
-# Generate Caddyfile dynamically
-CADDYFILE="/etc/caddy/Caddyfile"
-echo "localhost {" > "$CADDYFILE"
-echo "  tls /certs/local-dev.crt /certs/local-dev.key" >> "$CADDYFILE"
+# Generar archivo Caddyfile limpio
+echo "" > "$CADDYFILE"
 
 for ENTRY in $DOMAINS_ARRAY; do
   DOMAIN=$(echo "$ENTRY" | cut -d':' -f1)
   PORT=$(echo "$ENTRY" | cut -d':' -f2)
 
+  echo "$DOMAIN {" >> "$CADDYFILE"
+  echo "  tls $CERT_PATH $KEY_PATH" >> "$CADDYFILE"
+  echo "  reverse_proxy host.docker.internal:$PORT" >> "$CADDYFILE"
+  echo "}" >> "$CADDYFILE"
   echo "" >> "$CADDYFILE"
-  echo "  @${DOMAIN%%.*} {" >> "$CADDYFILE"
-  echo "    host $DOMAIN" >> "$CADDYFILE"
-  echo "  }" >> "$CADDYFILE"
-  echo "  reverse_proxy @${DOMAIN%%.*} host.docker.internal:$PORT" >> "$CADDYFILE"
 done
 
-echo "}" >> "$CADDYFILE"
-
+# Mostrar el archivo generado para debug
+echo "Archivo Caddyfile generado:"
 cat "$CADDYFILE"
 
+# Validar sintaxis del archivo
+caddy validate --config "$CADDYFILE" --adapter caddyfile || exit 1
+
+# Ejecutar Caddy
 exec caddy run --config "$CADDYFILE" --adapter caddyfile
