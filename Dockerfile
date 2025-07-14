@@ -2,7 +2,6 @@ FROM caddy:2-alpine
 
 RUN apk add --no-cache openssl dos2unix
 
-COPY Caddyfile /etc/caddy/Caddyfile
 COPY entrypoint.sh /entrypoint.sh
 
 # Convertimos a formato Unix por si viene de Windows
