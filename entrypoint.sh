@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/ash
 
 CERT_PATH="/certs/localhost.crt"
 KEY_PATH="/certs/localhost.key"
@@ -27,11 +27,10 @@ if [ ! -f "$CERT_PATH" ] || [ ! -f "$KEY_PATH" ]; then
 EOF
 
   I=1
-  IFS=',' read -ra HOSTS <<< "$DOMAINS"
-  for ENTRY in "${HOSTS[@]}"; do
+  for ENTRY in $(echo "$DOMAINS" | tr ',' ' '); do
     DOMAIN=$(echo "$ENTRY" | cut -d':' -f1)
     echo "DNS.${I} = ${DOMAIN}" >> "$OPENSSL_CONF"
-    I=$((I+1))
+    I=$((I + 1))
   done
 
   echo "IP.1 = 127.0.0.1" >> "$OPENSSL_CONF"
@@ -53,8 +52,7 @@ CADDYFILE="/etc/caddy/Caddyfile"
 echo "localhost {" > "$CADDYFILE"
 echo "  tls /certs/localhost.crt /certs/localhost.key" >> "$CADDYFILE"
 
-IFS=',' read -ra DOMAINS_ARRAY <<< "$DOMAINS"
-for ENTRY in "${DOMAINS_ARRAY[@]}"; do
+for ENTRY in $(echo "$DOMAINS" | tr ',' ' '); do
   DOMAIN=$(echo "$ENTRY" | cut -d':' -f1)
   PORT=$(echo "$ENTRY" | cut -d':' -f2)
 
