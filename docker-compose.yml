@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  dev-proxy:
+    build: .
+    container_name: dev-reverse-proxy
+    ports:
+      - "443:443"
+    volumes:
+      - ./certs:/certs
+    env_file:
+      - .env
