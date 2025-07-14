@@ -4,25 +4,27 @@ CERT_PATH="/certs/localhost.crt"
 KEY_PATH="/certs/localhost.key"
 DAYS_VALID=365
 
-# Crear certificados si no existen
+# Generate self-signed certificates if they do not exist
 if [ ! -f "$CERT_PATH" ] || [ ! -f "$KEY_PATH" ]; then
-  echo "🔐 Generando certificados autofirmados..."
+  echo "Generating self-signed certificates..."
 
   OPENSSL_CONF=$(mktemp)
-  echo "[req]
-default_bits = 2048
-prompt = no
-default_md = sha256
-distinguished_name = req_distinguished_name
-req_extensions = req_ext
+  cat > "$OPENSSL_CONF" <<EOF
+  [req]
+  default_bits = 2048
+  prompt = no
+  default_md = sha256
+  distinguished_name = req_distinguished_name
+  req_extensions = req_ext
 
-[req_distinguished_name]
-CN = localhost
+  [req_distinguished_name]
+  CN = localhost
 
-[req_ext]
-subjectAltName = @alt_names
+  [req_ext]
+  subjectAltName = @alt_names
 
-[alt_names]" > "$OPENSSL_CONF"
+  [alt_names]
+EOF
 
   I=1
   IFS=',' read -ra HOSTS <<< "$DOMAINS"
@@ -43,10 +45,10 @@ subjectAltName = @alt_names
 
   rm "$OPENSSL_CONF"
 else
-  echo "✅ Certificados ya existen"
+  echo "Certificates already exist."
 fi
 
-# Generar dinámicamente el Caddyfile
+# Generate Caddyfile dynamically
 CADDYFILE="/etc/caddy/Caddyfile"
 echo "localhost {" > "$CADDYFILE"
 echo "  tls /certs/localhost.crt /certs/localhost.key" >> "$CADDYFILE"
@@ -65,6 +67,6 @@ done
 
 echo "}" >> "$CADDYFILE"
 
-cat "$CADDYFILE"  # opcional para depurar
+cat "$CADDYFILE"
 
 exec caddy run --config "$CADDYFILE" --adapter caddyfile

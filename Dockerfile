@@ -1,12 +1,11 @@
 FROM caddy:2-alpine
 
-# Instala openssl en Alpine
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl dos2unix
 
-# Copia los archivos necesarios
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY entrypoint.sh /entrypoint.sh
 
-RUN chmod +x /entrypoint.sh
+# Convertimos a formato Unix por si viene de Windows
+RUN dos2unix /entrypoint.sh && chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
